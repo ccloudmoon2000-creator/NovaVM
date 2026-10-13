@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NovaVM — Emulador Web</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#121a2d;--panel2:#18233b;--line:#2b3957;--text:#edf3ff;--muted:#9aabc9;--accent:#7c9cff;--good:#6ee7b7;--warn:#fbbf24}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#18284a 0,#0b1020 55%);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+header{padding:26px max(20px,calc((100% - 1120px)/2));border-bottom:1px solid #ffffff16;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.brand{font-size:22px;font-weight:800;letter-spacing:-.5px}.brand span{color:var(--accent)}.pill{border:1px solid var(--line);border-radius:999px;padding:5px 10px;color:var(--muted);font-size:12px}
+main{max-width:1120px;margin:28px auto;padding:0 20px 50px}.intro{margin-bottom:25px}.intro h1{font-size:clamp(27px,4vw,40px);line-height:1.12;margin:0 0 12px;letter-spacing:-1px}.intro p{color:var(--muted);max-width:720px;margin:0}
+.layout{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:18px}.panel{background:linear-gradient(160deg,#151f35,#10182a);border:1px solid var(--line);border-radius:18px;padding:22px;min-width:0;box-shadow:0 14px 40px #0002}.panel h2{font-size:17px;margin:0 0 4px}.sub{font-size:13px;color:var(--muted);margin:0 0 20px}
+.drop{border:1px dashed #526b9a;border-radius:14px;padding:25px 16px;text-align:center;background:#0b1325;cursor:pointer;transition:.2s}.drop:hover,.drop.drag{border-color:var(--accent);background:#172644}.drop strong{display:block;font-size:16px;margin:7px 0}.drop small{color:var(--muted)}.drop input{display:none}
+.fileinfo{font-size:13px;color:var(--good);margin-top:12px;overflow-wrap:anywhere}
+.field{margin:17px 0}.field label{display:flex;justify-content:space-between;gap:12px;font-weight:650;margin-bottom:8px}.field output{color:#b9c9ff;font-variant-numeric:tabular-nums}.field input[type=range]{width:100%;accent-color:var(--accent)}select{width:100%;background:#0b1325;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:11px}
+.specgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}.btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}button{border:0;border-radius:10px;padding:12px 16px;font-weight:750;cursor:pointer}.primary{background:var(--accent);color:#071126}.secondary{background:#263451;color:var(--text);border:1px solid #3b4c6e}.primary:disabled{opacity:.45;cursor:not-allowed}
+.screen{margin-top:18px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#05080e}.screenbar{padding:9px 12px;background:#111a2c;color:var(--muted);font-size:12px;display:flex;justify-content:space-between}.screenbody{min-height:225px;padding:20px;display:flex;align-items:center;justify-content:center;text-align:center;color:#8290aa;font-family:ui-monospace,SFMono-Regular,monospace;white-space:pre-wrap;overflow:auto}.screenbody.running{display:block;text-align:left;color:#a9f5c8;min-height:225px}
+.notice{margin-top:18px;padding:14px 15px;border-radius:12px;background:#302713;border:1px solid #5a4820;color:#f8dda0;font-size:13px}.notice strong{display:block;margin-bottom:4px}.status{font-size:12px;color:var(--muted);margin-top:12px}.tag{display:inline-block;font-size:11px;padding:3px 7px;border-radius:6px;background:#202e4b;color:#b9c9ff;margin:4px 4px 0 0}
+footer{max-width:1120px;margin:auto;padding:0 20px 30px;color:var(--muted);font-size:12px}
+@media(max-width:780px){.layout{grid-template-columns:1fr}.panel{padding:17px}.specgrid{grid-template-columns:1fr 1fr}}@media(max-width:420px){.specgrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div class="brand">◈ Nova<span>VM</span></div><div class="pill">Protótipo para GitHub Pages</div></header>
+<main>
+<section class="intro"><h1>O teu computador.<br>Dentro do navegador.</h1><p>Configura uma máquina virtual, escolhe uma imagem de sistema e prepara a sessão. Interface estática, sem conta e sem servidor próprio.</p></section>
+<div class="layout">
+<section class="panel">
+<h2>01 / Imagem do sistema</h2><p class="sub">Escolhe um ficheiro local ISO ou IMG.</p>
+<label class="drop" id="drop"><span style="font-size:27px">⇧</span><strong>Arrasta a imagem para aqui</strong><small>ou clica para procurar · ISO / IMG</small><input id="imageFile" type="file" accept=".iso,.img,.bin,application/octet-stream"></label>
+<div class="fileinfo" id="fileInfo">Nenhuma imagem selecionada.</div>
+<div class="field"><label for="platform">Tipo de sistema</label><select id="platform"><option value="x86">PC x86 (compatível com emulador web)</option><option value="android">Android (experimental / não suportado neste protótipo)</option></select></div>
+<div class="notice"><strong>Limitação importante</strong>Selecionar um ficheiro não o torna automaticamente compatível. O motor de emulação no navegador tem de suportar a arquitetura e o arranque dessa imagem. O Android moderno, sobretudo ARM, não funciona como um PC x86 comum.</div>
+</section>
+<section class="panel">
+<h2>02 / Hardware virtual</h2><p class="sub">Define os recursos que a máquina virtual poderá tentar utilizar.</p>
+<div class="specgrid">
+<div class="field"><label for="ram">RAM <output id="ramOut">2048 MB</output></label><input id="ram" type="range" min="256" max="8192" step="256" value="2048"></div>
+<div class="field"><label for="disk">Disco <output id="diskOut">32 GB</output></label><input id="disk" type="range" min="4" max="128" step="4" value="32"></div>
+<div class="field"><label for="cpu">CPU virtual <output id="cpuOut">2 vCPU</output></label><input id="cpu" type="range" min="1" max="8" step="1" value="2"></div>
+<div class="field"><label for="gpu">GPU</label><select id="gpu"><option value="basic">Adaptador gráfico básico</option><option value="webgl">Aceleração gráfica do navegador (quando disponível)</option><option value="none">Sem saída gráfica</option></select></div>
+</div>
+<div class="field"><label for="resolution">Resolução pretendida</label><select id="resolution"><option>800 × 600</option><option selected>1024 × 768</option><option>1280 × 720</option><option>1920 × 1080</option></select></div>
+<div class="btnrow"><button class="primary" id="startBtn">Preparar máquina</button><button class="secondary" id="resetBtn">Repor definições</button></div>
+<div class="status" id="status">Pronto para configurar. Ainda não existe uma máquina virtual a correr.</div>
+</section>
+</div>
+<section class="panel" style="margin-top:18px">
+<h2>03 / Consola da máquina</h2><p class="sub">Pré-visualização de estado. Esta versão não arranca o sistema operativo.</p>
+<div class="screen"><div class="screenbar"><span>NovaVM · consola</span><span id="screenState">DESLIGADA</span></div><div class="screenbody" id="screenBody">NovaVM BIOS interface v0.1
+
+Nenhuma máquina iniciada.
+Configura os recursos e seleciona uma imagem acima.</div></div>
+<div style="margin-top:14px"><span class="tag">HTML / CSS / JavaScript</span><span class="tag">Sem backend</span><span class="tag">GitHub Pages</span><span class="tag">Configuração demonstrativa</span></div>
+</section>
+</main>
+<footer>NovaVM é um protótipo de interface. Os valores de CPU, RAM, disco e GPU são configurações visuais e não reservam recursos reais do computador.</footer>
+<script>
+const $=id=>document.getElementById(id);
+let selectedFile=null;
+const fmt={
+ ram: v=>`${v} MB`, disk:v=>`${v} GB`, cpu:v=>`${v} vCPU`
+};
+['ram','disk','cpu'].forEach(id=>{
+ const el=$(id), out=$(id+'Out');
+ const update=()=>out.textContent=fmt[id](el.value);
+ el.addEventListener('input',update);update();
+});
+$('imageFile').addEventListener('change',e=>setFile(e.target.files[0]));
+function setFile(file){
+ if(!file)return;
+ selectedFile=file;
+ $('fileInfo').textContent=`Selecionado: ${file.name} · ${(file.size/1024/1024).toFixed(1)} MB`;
+ $('status').textContent='Imagem selecionada. A compatibilidade depende do motor de emulação e da arquitetura do sistema.';
+}
+const drop=$('drop');
+drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('drag')});
+drop.addEventListener('dragleave',()=>drop.classList.remove('drag'));
+drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('drag');setFile(e.dataTransfer.files[0])});
+$('startBtn').addEventListener('click',()=>{
+ const platform=$('platform').value;
+ const specs=`RAM: ${$('ram').value} MB\nDisco configurado: ${$('disk').value} GB\nCPU virtual: ${$('cpu').value} vCPU\nGPU: ${$('gpu').selectedOptions[0].text}\nResolução: ${$('resolution').value}`;
+ $('screenState').textContent='CONFIGURADA';
+ $('screenBody').classList.add('running');
+ $('screenBody').textContent='NovaVM firmware v0.1\n----------------------\nVerificação da configuração concluída.\n\n'+specs+'\n\n'+(selectedFile?`Imagem selecionada: ${selectedFile.name}\nTamanho: ${(selectedFile.size/1024/1024).toFixed(1)} MB`:'AVISO: nenhuma imagem ISO/IMG selecionada.')+'\n\nEsta demonstração não executa nem arranca a imagem. Para iniciar um SO real, integra um motor compatível (por exemplo, v86 para alguns sistemas x86) e fornece os respetivos ficheiros de firmware. Android moderno requer uma solução de emulação diferente.';
+ $('status').textContent=platform==='android'?'Perfil Android selecionado; este protótipo não consegue executar Android.':'Configuração preparada em modo de demonstração.';
+});
+$('resetBtn').addEventListener('click',()=>{
+ $('ram').value=2048;$('disk').value=32;$('cpu').value=2;$('gpu').selectedIndex=0;$('platform').selectedIndex=0;$('resolution').selectedIndex=1;
+ ['ram','disk','cpu'].forEach(id=>$(id).dispatchEvent(new Event('input')));
+ selectedFile=null;$('imageFile').value='';$('fileInfo').textContent='Nenhuma imagem selecionada.';
+ $('status').textContent='Pronto para configurar. Ainda não existe uma máquina virtual a correr.';
+ $('screenState').textContent='DESLIGADA';$('screenBody').classList.remove('running');$('screenBody').textContent='NovaVM BIOS interface v0.1\n\nNenhuma máquina iniciada.\nConfigura os recursos e seleciona uma imagem acima.';
+});
+</script>
+</body></html>
